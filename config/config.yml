@@ -1,0 +1,163 @@
+default_headers:
+  User-Agent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+  Accept: "application/json, text/plain, */*"
+  Accept-Language: "en-US,en;q=0.9,pt-BR;q=0.8"
+
+# -----------------------------------------------------------------
+# Lista de Alvos de Extração
+# -----------------------------------------------------------------
+sites:
+  # -----------------------------------------------------------------
+  # Alvo 1: Padrão WordPress (JSON + HTML Sujo)
+  # -----------------------------------------------------------------
+  - id: "nicolini"
+    product_id: "cafe_melitta_500g" # Nosso ID interno
+    strategy: "wordpress_ajax"
+    
+    request:
+      method: "GET"
+      base_url: "https://pelotas.supernicolini.com.br/wp-admin/admin-ajax.php"
+      params:
+        action: "flatsome_ajax_search_products"
+        query: "cafe 500 melitta"
+    
+    parser:
+      # 1. Encontrar o produto na lista de sugestões
+      json_path_list: "suggestions"
+      target_product_id: 2560      
+      product_id_key: "id"      
+
+      # 2. Extrair os dados (após encontrar o objeto do produto)
+      product_name_key: "value" 
+      price_html_key: "price"    
+      
+      # 3. Seletores CSS para o BeautifulSoup (ordem de prioridade)
+      price_selectors:
+        - "ins span.woocommerce-Price-amount" # 1. Tentar pegar o preço promocional (tag <ins>)
+        - "span.woocommerce-Price-amount"     # 2. Fallback para o preço regular
+
+  # -----------------------------------------------------------------
+  # Alvo 2: Padrão VTEX GraphQL (Base64)
+  # -----------------------------------------------------------------
+  - id: "treichel"
+    product_id: "cafe_melitta_500g"
+    strategy: "vtex_base64"
+    
+    request:
+      method: "GET"
+      base_url: "https://delivery.atacadotreichel.com.br/_v/segment/graphql/v1"
+      # Parâmetros estáticos da URL (o scraper vai adicionar 'extensions')
+      params:
+        workspace: "master"
+        locale: "pt-BR"
+        operationName: "productSuggestions"
+      
+      # Payload que o scraper irá converter para Base64 e injetar em 'extensions[variables]'
+      extensions_payload:
+        fullText: "cafe 500 melitta"
+        count: 3
+        sha256Hash: "291c1730af3b43166ebfe1c52e6f42da2b3a25f9f87cbaf154d495edd3c1c582"
+        sender: "vtex.store-resources@0.x"
+        provider: "vtex.search-graphql@0.x"
+
+    parser:
+      json_path_list: "data.productSuggestions.products"
+      target_product_id: "6057"
+      product_id_key: "productId"
+      
+      product_name_key: "productName"
+      # Caminho JSON para o preço, relativo ao objeto do produto
+      price_path: ["items", 0, "sellers", 0, "commertialOffer", "Price"]
+
+  # -----------------------------------------------------------------
+  # Alvo 3: Padrão VTEX GraphQL (URL-Encoded)
+  # -----------------------------------------------------------------
+  - id: "atacadao"
+    product_id: "cafe_melitta_500g"
+    strategy: "vtex_url_encoded"
+    
+    request:
+      method: "GET"
+      base_url: "https://www.atacadao.com.br/api/graphql"
+      params:
+        operationName: "SearchSuggestionsQuery" # Param estático da URL
+      
+      variables_payload:
+        term: "cafe 500 melitta"
+
+    parser:
+      json_path_list: "data.search.suggestions.products"
+      target_product_id: "2617" 
+      product_id_key: "id"
+
+      product_name_key: "name"
+      # Caminho JSON para o preço, relativo ao objeto do produto
+      price_path: ["offers", "offers", 0, "price"]
+
+  # -----------------------------------------------------------------
+  # PRODUTO 2: ARROZ
+  # -----------------------------------------------------------------
+  - id: "nicolini"
+    product_id: "arroz_tipo1_5kg"
+    strategy: "wordpress_ajax"
+    
+    request:
+      method: "GET"
+      base_url: "https://pelotas.supernicolini.com.br/wp-admin/admin-ajax.php"
+      params:
+        action: "flatsome_ajax_search_products"
+        query: "arroz 5kg"  
+    
+    parser:
+      json_path_list: "suggestions"
+      target_product_id: 3210 
+      product_id_key: "id"
+      product_name_key: "value"
+      price_html_key: "price"
+      price_selectors:
+        - "ins span.woocommerce-Price-amount"
+        - "span.woocommerce-Price-amount"
+
+  - id: "treichel"
+    product_id: "arroz_tipo1_5kg"
+    strategy: "vtex_base64"
+    
+    request:
+      method: "GET"
+      base_url: "https://delivery.atacadotreichel.com.br/_v/segment/graphql/v1"
+      # Parâmetros estáticos da URL (o scraper vai adicionar 'extensions')
+      params:
+        workspace: "master"
+        locale: "pt-BR"
+        operationName: "productSuggestions"
+      
+      extensions_payload:
+        fullText: "arroz 5 kg tio joão"
+        count: 3
+        sha256Hash: "291c1730af3b43166ebfe1c52e6f42da2b3a25f9f87cbaf154d495edd3c1c582"
+        sender: "vtex.store-resources@0.x"
+        provider: "vtex.search-graphql@0.x"
+
+    parser:
+      json_path_list: "data.productSuggestions.products"
+      target_product_id: "5500"
+      product_id_key: "productId"
+      
+      product_name_key: "productName"
+      # Caminho JSON para o preço, relativo ao objeto do produto
+      price_path: ["items", 0, "sellers", 0, "commertialOffer", "Price"]
+      
+  - id: "atacadao"
+    product_id: "arroz_tipo1_5kg"
+    strategy: "nextjs_product_page"
+
+    request:
+      # 2. Requisição simples para a URL do produto
+      method: "GET"
+      url: "https://www.atacadao.com.br/arroz-tio-joao-agulhinha---tipo-1-5148-15022/p"
+    
+    parser:
+      json_path_list: "props.pageProps.product.offers.offers"
+      product_id_key: "sku"  # Irrelevante
+      product_name_key: "name" # Irrelevante
+      price_path: ["price"]
